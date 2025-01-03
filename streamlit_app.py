@@ -30,10 +30,11 @@ except Exception as e:
     st.session_state.records = []
 
 # 页面标题
-st.title('患病记录器')
+st.title('InfectionAlert')
+st.caption('身边人的患病计数器')
 
 # 使用tabs来组织文件操作
-tab1, tab2 = st.tabs(["上传数据", "下载数据"])
+tab1, tab2, tab3 = st.tabs(["上传数据", "下载数据", "管理数据"])
 
 with tab1:
     # 文件上传组件
@@ -51,6 +52,7 @@ with tab1:
             with open(DATA_FILE, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             st.success('文件上传成功！')
+            st.rerun()  # 刷新页面
         except Exception as e:
             st.error(f'文件上传失败：{str(e)}')
 
@@ -72,6 +74,73 @@ with tab2:
         )
     else:
         st.warning("暂无数据可供下载")
+
+with tab3:
+    if st.session_state.records:
+        # 将数据转换为DataFrame
+        df = pd.DataFrame(st.session_state.records)
+        # 添加索引列
+        df['index'] = range(len(df))
+        # 只显示需要的列
+        edited_df = st.data_editor(
+            df[['index', 'time', 'total', 'sick', 'rate']],
+            column_config={
+                "index": "序号",
+                "time": "时间",
+                "total": "总人数",
+                "sick": "患病人数",
+                "rate": st.column_config.NumberColumn(
+                    "患病率 (%)",
+                    format="%.2f %%"
+                )
+            },
+            num_rows="dynamic",
+            use_container_width=True
+        )
+
+        # 创建两列布局
+        col1, col2 = st.columns(2)
+        with col1:
+            # 保存修改按钮
+            if st.button('保存修改'):
+                try:
+                    # 将修改后的数据转换回原始格式
+                    st.session_state.records = [
+                        {
+                            'time': datetime.datetime.fromisoformat(row['time']).astimezone(tz),
+                            'total': row['total'],
+                            'sick': row['sick'],
+                            'rate': row['rate']
+                        }
+                        for row in edited_df.to_dict('records')
+                    ]
+
+                    # 保存到JSON文件
+                    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                        json.dump([
+                            {**record, 'time': record['time'].isoformat()}
+                            for record in st.session_state.records
+                        ], f, ensure_ascii=False, indent=2)
+
+                    st.success('修改已保存！')
+                    st.rerun()  # 刷新页面
+                except Exception as e:
+                    st.error(f'保存失败：{str(e)}')
+
+        with col2:
+            # 添加一键清空按钮
+            if st.button('一键清空', type="primary"):
+                st.session_state.records = []
+                try:
+                    # 清空本地文件
+                    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                        json.dump([], f)
+                    st.success('数据已清空！')
+                    st.rerun()  # 刷新页面
+                except Exception as e:
+                    st.error(f'清空失败：{str(e)}')
+    else:
+        st.warning("暂无数据可供编辑")
 
 # 输入区域
 col1, col2 = st.columns(2)
@@ -113,6 +182,7 @@ with col2:
             ], f, ensure_ascii=False, indent=2)
 
         st.success('记录已添加！')
+        st.rerun()  # 刷新页面
 
 # 绘制圆圈图和折线图
 if st.session_state.records:

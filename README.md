@@ -38,19 +38,11 @@ InfectionAlert 是一个用于追踪和可视化身边人群患病情况的仪�
 ## 在线访问
 [点击这里访问在线应用](https://infectionalert-dashboard-feather.streamlit.app/)
 
-## 技术栈
-- Python
-- Streamlit
-- Plotly
-- Pandas
 
 ## 注意事项
 - 数据存储在浏览器临时文件中，清除浏览器缓存会导致数据丢失
 - 建议定期下载数据备份
 - 上传文件需符合指定JSON格式
-
-## 截图示例
-（此处可添加应用截图）
 
 ## 许可证
 MIT License

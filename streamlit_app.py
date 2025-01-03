@@ -88,7 +88,8 @@ with col1:
         # 添加日期和时间选择器
         selected_date = st.date_input("选择日期", datetime.date.today())
         selected_time = st.time_input("选择时间", datetime.time(12, 0))
-        record_time = datetime.datetime.combine(selected_date, selected_time)
+        # 修改这里：将用户选择的时间标记为东八区时间
+        record_time = datetime.datetime.combine(selected_date, selected_time).replace(tzinfo=tz)
     else:
         # 使用东八区时间
         record_time = datetime.datetime.now(tz)

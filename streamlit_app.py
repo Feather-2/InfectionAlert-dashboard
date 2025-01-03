@@ -5,9 +5,17 @@ import json
 import os
 import plotly.express as px
 from datetime import timezone, timedelta
+import tempfile
 
-# 数据文件路径
-DATA_FILE = 'records.json'
+# 使用临时文件
+import tempfile
+
+# 获取或创建用户临时文件
+if 'temp_file' not in st.session_state:
+    # 创建临时文件
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json', mode='w+', encoding='utf-8')
+    temp_file.close()
+    st.session_state.temp_file = temp_file.name
 
 # 创建东八区时区
 tz = timezone(timedelta(hours=8))
@@ -18,13 +26,20 @@ if 'records' not in st.session_state:
 
 # 每次运行时都重新加载数据
 try:
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            # 将字符串时间转换为datetime对象
-            st.session_state.records = [
-                {**record, 'time': datetime.datetime.fromisoformat(record['time']).astimezone(tz)}
-                for record in json.load(f)
-            ]
+    if os.path.exists(st.session_state.temp_file):
+        with open(st.session_state.temp_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if content.strip():  # 检查文件内容是否为空
+                # 将字符串时间转换为datetime对象
+                st.session_state.records = [
+                    {**record, 'time': datetime.datetime.fromisoformat(record['time']).astimezone(tz)}
+                    for record in json.loads(content)
+                ]
+            else:
+                st.session_state.records = []  # 如果文件为空，初始化空列表
+except json.JSONDecodeError as e:
+    st.error(f'JSON格式错误：{str(e)}')
+    st.session_state.records = []
 except Exception as e:
     st.error(f'数据加载失败：{str(e)}')
     st.session_state.records = []
@@ -48,11 +63,11 @@ with tab1:
                 {**record, 'time': datetime.datetime.fromisoformat(record['time']).astimezone(tz)}
                 for record in data
             ]
-            # 保存到本地
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            # 保存到临时文件
+            with open(st.session_state.temp_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             st.success('文件上传成功！')
-            st.rerun()  # 刷新页面
+            st.rerun()
         except Exception as e:
             st.error(f'文件上传失败：{str(e)}')
 
@@ -115,15 +130,15 @@ with tab3:
                         for row in edited_df.to_dict('records')
                     ]
 
-                    # 保存到JSON文件
-                    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                    # 保存到临时文件
+                    with open(st.session_state.temp_file, 'w', encoding='utf-8') as f:
                         json.dump([
                             {**record, 'time': record['time'].isoformat()}
                             for record in st.session_state.records
                         ], f, ensure_ascii=False, indent=2)
 
                     st.success('修改已保存！')
-                    st.rerun()  # 刷新页面
+                    st.rerun()
                 except Exception as e:
                     st.error(f'保存失败：{str(e)}')
 
@@ -132,11 +147,10 @@ with tab3:
             if st.button('一键清空', type="primary"):
                 st.session_state.records = []
                 try:
-                    # 清空本地文件
-                    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                    with open(st.session_state.temp_file, 'w', encoding='utf-8') as f:
                         json.dump([], f)
                     st.success('数据已清空！')
-                    st.rerun()  # 刷新页面
+                    st.rerun()
                 except Exception as e:
                     st.error(f'清空失败：{str(e)}')
     else:
@@ -173,8 +187,8 @@ with col2:
         }
         st.session_state.records.append(record)
 
-        # 保存到JSON文件
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        # 保存到临时文件
+        with open(st.session_state.temp_file, 'w', encoding='utf-8') as f:
             # 将datetime对象转换为字符串
             json.dump([
                 {**record, 'time': record['time'].isoformat()}
